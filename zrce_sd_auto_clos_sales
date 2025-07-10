@@ -1,0 +1,81 @@
+@EndUserText.label: 'Root Custom Entity'
+@ObjectModel.query.implementedBy: 'ABAP:ZCL_SD_AUTO_CLOS_SALES_GET'
+ 
+define root custom entity zrce_sd_auto_clos_sales
+{
+  key vbeln  : vbeln_va;
+ 
+  key posnr  : posnr_va;
+ 
+      vkorg  : vkorg;
+ 
+      vtweg  : vtweg;
+ 
+      kunnr  : kunag;
+ 
+      kvgr1  : kvgr1;
+ 
+      matnr  : matnr;
+ 
+      werks  : werks_ext;
+ 
+      auart  : auart;
+ 
+      vdatu  : abap.char(8);
+ 
+      ndays  : abap.numc( 2 );
+ 
+      charg  : charg_d;
+ 
+      abgru  : abgru_va;
+ 
+      spart  : spart;
+ 
+      lfgsk  : lkgsk;
+ 
+      lfstk  : lfstk;
+ 
+      spstg  : spstg;
+ 
+      @Semantics.quantity.unitOfMeasure: 'zieme'
+      zmeng  : dzmeng;
+ 
+      @Semantics.amount.currencyCode: 'waerk'
+      zwert  : dzwert;
+ 
+      zieme  : dzieme;
+ 
+      @Semantics.amount.currencyCode: 'waerk'
+      netwr  : netwr_ap;
+ 
+      waerk  : waerk;
+ 
+      @Semantics.quantity.unitOfMeasure: 'VRKME'
+      kwmeng : kwmeng;
+ 
+      @Semantics.quantity.unitOfMeasure: 'VRKME'
+      lsmeng : lsmeng;
+ 
+      @Semantics.quantity.unitOfMeasure: 'VRKME'
+      kbmeng : kbmeng;
+ 
+      @Semantics.quantity.unitOfMeasure: 'VRKME'
+      klmeng : klmeng;
+ 
+      vgbel  : vgbel;
+ 
+      lprio  : lprio;
+ 
+      vstel  : vstel;
+ 
+      erdat  : abap.char( 8 );
+ 
+      mtvfp  : mtvfp;
+ 
+      gbsta  : gbsta;
+ 
+      lfsta  : lfsta;
+ 
+      vrkme  : vrkme;
+ 
+}
