@@ -1,0 +1,453 @@
+CLASS zcl_sd_auto_clos_sales_get DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    INTERFACES if_rap_query_provider.
+
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zcl_sd_auto_clos_sales_get IMPLEMENTATION.
+
+  METHOD if_rap_query_provider~select.
+
+    " Types Declaration
+    TYPES: BEGIN OF lty_vbak,
+             vbeln TYPE vbeln_va,
+             auart TYPE auart,
+             vkorg TYPE vkorg,
+             vtweg TYPE vtweg,
+             spart TYPE spart,
+             vdatu TYPE edatu_vbak,
+             lfgsk TYPE lkgsk,
+             lfstk TYPE lfstk,
+             spstg TYPE spstg,
+           END OF lty_vbak.
+
+    TYPES: BEGIN OF lty_vbap,
+             vbeln          TYPE vbeln_va,
+             posnr          TYPE posnr_va,
+             matnr          TYPE matnr,
+             charg          TYPE charg_d,
+             abgru          TYPE abgru_va,
+             zmeng          TYPE dzmeng,
+             zwert          TYPE dzwert,
+             zieme          TYPE dzieme,
+             netwr          TYPE netwr_ap,
+             waerk          TYPE waerk,
+             kwmeng         TYPE kwmeng,
+             lsmeng         TYPE lsmeng,
+             kbmeng         TYPE kbmeng,
+             klmeng         TYPE klmeng,
+             vgbel          TYPE vgbel,
+             lprio          TYPE lprio,
+             werks          TYPE werks_ext,
+             vstel          TYPE vstel,
+             erdat          TYPE erdat,
+             mtvfp          TYPE mtvfp,
+             gbsta          TYPE gbsta,
+             lfsta          TYPE lfsta,
+             thresholdvalue TYPE p LENGTH 4 DECIMALS 2,
+           END OF lty_vbap.
+*    types:
+*    BEGIN OF ty_name_range_pairs,
+*      name  TYPE string,
+*      range TYPE tt_range_option,
+*    END OF ty_name_range_pairs .
+*  types:
+*    "! List of range tables along with the element that they refer to
+*    tt_name_range_pairs TYPE STANDARD TABLE OF ty_name_range_pairs WITH EMPTY KEY .
+
+    " Constants Declaration
+    CONSTANTS: lc_a TYPE char1 VALUE 'A',
+               lc_b TYPE char1 VALUE 'B'.
+
+    " Data Declaration
+    DATA: lt_vbak        TYPE TABLE OF lty_vbak,
+          lt_vbap        TYPE TABLE OF lty_vbap,
+          ls_out         TYPE zrce_sd_auto_clos_sales,
+          lv_valid_date  TYPE dats,
+          lt_out         TYPE TABLE OF zrce_sd_auto_clos_sales,
+          lt_result      TYPE TABLE OF zrce_sd_auto_clos_sales,
+          lt_out_sales   TYPE TABLE OF zrce_sd_auto_clos_sales,
+          lv_ord_qtythr  TYPE wmeng,
+          lv_del_qtythr  TYPE dlvqty,
+          lv_open_qtythr TYPE dzmeng,
+          thr_per        TYPE p LENGTH 4 DECIMALS 2,
+          lv_page_size   TYPE i.
+
+    io_request->get_paging( ).
+
+    CASE io_request->get_entity_id( ).
+
+      WHEN 'ZRE_SD_AUTO_CLOS_SALES'.
+
+        DATA(lo_filter) = io_request->get_filter( ).
+
+        TRY.
+
+            DATA(lt_filter_ranges) = lo_filter->get_as_ranges(  ).
+
+            LOOP AT lt_filter_ranges INTO DATA(ls_filter_ranges).
+
+              CASE ls_filter_ranges-name.
+
+                WHEN 'VBELN'.
+                  DATA(lt_filter_vbeln)  = ls_filter_ranges-range.
+
+                WHEN 'VKORG'.
+                  DATA(lt_filter_vkorg) = ls_filter_ranges-range.
+
+                WHEN 'VTWEG'.
+                  DATA(lt_filter_vtweg) = ls_filter_ranges-range.
+
+                WHEN 'KUNNR'.
+                  DATA(lt_filter_kunnr) = ls_filter_ranges-range.
+
+                WHEN 'KVGR1'.
+                  DATA(lt_filter_kvgr1) = ls_filter_ranges-range.
+
+                WHEN 'MATNR'.
+                  DATA(lt_filter_matnr) = ls_filter_ranges-range.
+
+                WHEN 'WERKS'.
+                  DATA(lt_filter_werks) = ls_filter_ranges-range.
+
+                WHEN 'AUART'.
+                  DATA(lt_filter_auart) = ls_filter_ranges-range.
+
+                WHEN 'VDATU'.
+                  DATA(lt_filter_vdatu) = ls_filter_ranges-range.
+
+                WHEN 'NDAYS'.
+                  DATA(lt_filter_ndays) = ls_filter_ranges-range.
+
+                WHEN 'BATCHJOB'.
+                  DATA(lt_filter_batch) = ls_filter_ranges-range.
+
+                WHEN 'THRESHOLDFLAG' .
+                  DATA(lt_filter_thresholdflag)  = ls_filter_ranges-range.
+
+                WHEN 'THRESHOLD' .
+                  DATA(lt_filter_threshold)  = ls_filter_ranges-range.
+
+              ENDCASE.
+
+            ENDLOOP.
+
+          CATCH cx_rap_query_filter_no_range INTO DATA(ls_multiplecall).
+
+        ENDTRY.
+
+        IF lt_filter_thresholdflag IS NOT INITIAL.
+          DATA(lv_thresholdflagno) = lt_filter_thresholdflag[ 1 ]-low.
+        ENDIF.
+
+        IF lv_thresholdflagno IS INITIAL.
+        
+          IF lt_filter_ndays IS INITIAL.
+
+            " Fetch Sales Orders
+            SELECT vbeln
+                   auart
+                   vkorg
+                   vtweg
+                   spart
+                   vdatu
+                   lfgsk
+                   lfstk
+                   spstg
+              FROM vbak
+              INTO TABLE lt_vbak
+          WHERE vkorg IN lt_filter_vkorg
+            AND vtweg IN lt_filter_vtweg
+            AND kunnr IN lt_filter_kunnr
+            AND kvgr1 IN lt_filter_kvgr1
+            AND auart IN lt_filter_auart
+            AND vdatu IN lt_filter_vdatu.
+
+          ELSE.
+
+            DATA(lv_nodays) = lt_filter_ndays[ 1 ]-low.
+
+*          DATA(lv_date_low) = lt_filter_vdatu[ 1 ]-low.
+*          DATA(lv_date_high) = lt_filter_vdatu[ 1 ]-high.
+
+            CONCATENATE '-' lv_nodays INTO DATA(lv_days).
+
+            CALL FUNCTION 'RELATIVE_DATE_CALCULATE'
+              EXPORTING
+                days        = lv_days
+                months      = '0'
+                start_date  = sy-datum
+                years       = '0'
+              IMPORTING
+                result_date = lv_valid_date.
+
+            " Fetch Sales Orders
+            SELECT vbeln
+                   auart
+                   vkorg
+                   vtweg
+                   spart
+                   vdatu
+                   lfgsk
+                   lfstk
+                   spstg
+              FROM vbak
+              INTO TABLE lt_vbak
+          WHERE vkorg IN lt_filter_vkorg
+            AND vtweg IN lt_filter_vtweg
+            AND kunnr IN lt_filter_kunnr
+            AND kvgr1 IN lt_filter_kvgr1
+            AND auart IN lt_filter_auart
+            AND vdatu <= lv_valid_date
+            AND vdatu IN lt_filter_vdatu.
+
+          ENDIF.
+        ENDIF.
+
+        "---Threshold
+        IF lt_filter_threshold IS NOT INITIAL.
+          DATA(lv_threshold) = lt_filter_threshold[ 1 ]-low.
+        ENDIF.
+        IF lt_filter_thresholdflag IS NOT INITIAL.
+          DATA(lv_thresholdflag) = lt_filter_thresholdflag[ 1 ]-low.
+        ENDIF.
+        IF lv_thresholdflag = 'X'.
+
+          " Fetch Sales Orders
+          SELECT vbeln
+                 auart
+                 vkorg
+                 vtweg
+                 spart
+                 vdatu
+                 lfgsk
+                 lfstk
+                 spstg
+            FROM vbak
+            INTO TABLE lt_vbak
+        WHERE vkorg IN lt_filter_vkorg
+          AND vtweg IN lt_filter_vtweg
+          AND kunnr IN lt_filter_kunnr
+          AND kvgr1 IN lt_filter_kvgr1
+          AND auart IN lt_filter_auart
+          AND vdatu IN lt_filter_vdatu.
+
+        ENDIF.
+        "---end threshold changes
+
+
+
+        SORT lt_vbak ASCENDING BY vbeln.
+
+        "threshold
+        IF lv_thresholdflag = 'X'.
+          IF lt_vbak[] IS NOT INITIAL.
+            " Fetch Sales Order Items
+            SELECT vbeln
+                   posnr
+                   matnr
+                   charg
+                   abgru
+                   zmeng
+                   zwert
+                   zieme
+                   netwr
+                   waerk
+                   kwmeng
+                   lsmeng
+                   kbmeng
+                   klmeng
+                   vgbel
+                   lprio
+                   werks
+                   vstel
+                   erdat
+                   mtvfp
+                   gbsta
+                   lfsta
+              FROM vbap
+              INTO TABLE lt_vbap
+              FOR ALL ENTRIES IN lt_vbak
+              WHERE vbeln = lt_vbak-vbeln
+              AND werks IN lt_filter_werks
+              AND matnr IN lt_filter_matnr
+              AND ( lfsta = lc_a OR lfsta = lc_b ).
+
+          ENDIF.
+
+          IF lv_threshold IS NOT INITIAL.
+            LOOP AT lt_vbap ASSIGNING FIELD-SYMBOL(<fs_vbap_thr>).
+              SELECT etenr,
+                      wmeng,
+                      dlvqty_bu
+                 FROM vbep
+                 INTO TABLE @DATA(lt_vbep_thr)
+                WHERE vbeln = @<fs_vbap_thr>-vbeln
+                  AND posnr = @<fs_vbap_thr>-posnr.
+
+              CLEAR: lv_ord_qtythr,lv_del_qtythr.
+              READ TABLE lt_vbep_thr INTO DATA(ls_vbep_thr) INDEX 1.
+              " order quantity
+              lv_ord_qtythr = ls_vbep_thr-wmeng.
+
+              DESCRIBE TABLE lt_vbep_thr LINES DATA(lv_lines_thr).
+
+              " delivered quantity
+              IF lv_lines_thr > 1.
+
+                LOOP AT lt_vbep_thr INTO ls_vbep_thr.
+                  lv_del_qtythr = lv_del_qtythr + ls_vbep_thr-dlvqty_bu.
+                ENDLOOP.
+
+              ELSE.
+                lv_del_qtythr = ls_vbep_thr-dlvqty_bu.
+              ENDIF.
+
+              lv_open_qtythr = lv_ord_qtythr - lv_del_qtythr.
+
+              CLEAR thr_per.
+              thr_per =  ( lv_open_qtythr * 100 ) / lv_ord_qtythr.
+              <fs_vbap_thr>-thresholdvalue = thr_per.
+              DATA(thr_per_round) = round( val = thr_per dec = 0 ).
+              IF thr_per_round > lv_threshold.
+
+                DELETE lt_vbap WHERE vbeln = <fs_vbap_thr>-vbeln AND posnr = <fs_vbap_thr>-posnr.
+
+              ENDIF.
+
+            ENDLOOP.
+          ENDIF.
+
+
+
+        ELSE."No of days
+          IF lt_vbak[] IS NOT INITIAL.
+            " Fetch Sales Order Items
+            SELECT vbeln
+                   posnr
+                   matnr
+                   charg
+                   abgru
+                   zmeng
+                   zwert
+                   zieme
+                   netwr
+                   waerk
+                   kwmeng
+                   lsmeng
+                   kbmeng
+                   klmeng
+                   vgbel
+                   lprio
+                   werks
+                   vstel
+                   erdat
+                   mtvfp
+                   gbsta
+                   lfsta
+              FROM vbap
+              INTO TABLE lt_vbap
+              FOR ALL ENTRIES IN lt_vbak
+              WHERE vbeln = lt_vbak-vbeln
+              AND werks IN lt_filter_werks
+              AND matnr IN lt_filter_matnr
+              AND ( lfsta = lc_a OR lfsta = lc_b ).
+
+          ENDIF.
+        ENDIF.
+
+
+        LOOP AT lt_vbap INTO DATA(ls_vbap).
+
+          READ TABLE lt_vbak INTO DATA(ls_vbak) WITH KEY vbeln = ls_vbap-vbeln.
+
+          ls_out-vbeln = ls_vbak-vbeln.
+          ls_out-posnr = ls_vbap-posnr.
+          ls_out-auart = ls_vbak-auart.
+          ls_out-vkorg = ls_vbak-vkorg.
+          ls_out-vtweg = ls_vbak-vtweg.
+          ls_out-spart = ls_vbak-spart.
+          ls_out-lfgsk = ls_vbak-lfgsk.
+          ls_out-lfstk = ls_vbak-lfstk.
+          ls_out-spstg = ls_vbak-spstg.
+          ls_out-matnr = ls_vbap-matnr.
+          ls_out-charg = ls_vbap-charg.
+          ls_out-abgru = ls_vbap-abgru.
+          ls_out-zmeng = ls_vbap-zmeng.
+          ls_out-zwert = ls_vbap-zwert.
+          ls_out-zieme = ls_vbap-zieme.
+          ls_out-netwr = ls_vbap-netwr.
+          ls_out-waerk = ls_vbap-waerk.
+          ls_out-kwmeng = ls_vbap-kwmeng.
+          ls_out-lsmeng = ls_vbap-lsmeng.
+          ls_out-kbmeng = ls_vbap-kbmeng.
+          ls_out-klmeng = ls_vbap-klmeng.
+          ls_out-vgbel = ls_vbap-vgbel.
+          ls_out-lprio = ls_vbap-lprio.
+          ls_out-werks = ls_vbap-werks.
+          ls_out-vstel = ls_vbap-vstel.
+          ls_out-erdat = ls_vbap-erdat.
+          ls_out-mtvfp = ls_vbap-mtvfp.
+          ls_out-gbsta = ls_vbap-gbsta.
+          ls_out-lfsta = ls_vbap-lfsta.
+          ls_out-thresholdvalue = ls_vbap-thresholdvalue.
+          APPEND ls_out TO lt_out.
+          CLEAR ls_out.
+
+        ENDLOOP.
+
+        IF lt_filter_vbeln IS NOT INITIAL.
+          SELECT * FROM @lt_out AS response
+          WHERE vbeln IN @lt_filter_vbeln INTO TABLE @lt_out_sales.
+          CLEAR lt_out.
+          lt_out = lt_out_sales.
+        ENDIF.
+
+
+        " Get pagination info from request context
+        DATA(lo_paging) = io_request->get_paging( ).
+        IF lo_paging IS BOUND.
+          DATA(lv_top)  = lo_paging->get_page_size( ). " corresponds to $top
+          DATA(lv_skip) = lo_paging->get_offset( ).    " corresponds to $skip
+        ENDIF.
+
+        IF lv_skip IS NOT INITIAL.
+          DELETE lt_out FROM 1 TO lv_skip.
+        ENDIF.
+        IF lv_top IS NOT INITIAL.
+          lv_page_size = lv_top.
+        ELSE.
+          lv_page_size = lines( lt_out ).  " Return all if `$top` is not specified
+        ENDIF.
+
+        IF lv_page_size = '-1'.
+          lv_page_size = 0.
+        ENDIF.
+
+        " Trim the result based on `$top`
+        IF lv_page_size < lines( lt_out ).
+          DELETE lt_out FROM ( lv_page_size + 1 ) TO lines( lt_out ).
+        ENDIF.
+
+
+        IF io_request->is_data_requested( ).
+          io_response->set_data( lt_out ).
+        ENDIF.
+
+        IF io_request->is_total_numb_of_rec_requested( ).
+          io_response->set_total_number_of_records( lines( lt_out ) ).
+        ENDIF.
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+ENDCLASS.
