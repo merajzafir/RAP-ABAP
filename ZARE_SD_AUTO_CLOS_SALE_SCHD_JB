@@ -1,0 +1,22 @@
+@EndUserText.label: 'Abstract Root Entity For Schedule Job'
+
+define root abstract entity ZARE_SD_AUTO_CLOS_SALE_SCHD_JB
+{
+      vkorg  : vkorg;
+ 
+      vtweg  : vtweg;
+ 
+      kunnr  : kunag;
+ 
+      kvgr1  : kvgr1;
+ 
+      matnr  : matnr;
+ 
+      werks  : werks_ext;
+ 
+      auart  : auart;
+ 
+      vdatu  : abap.char(8);
+ 
+      ndays  : abap.numc( 2 );
+}
