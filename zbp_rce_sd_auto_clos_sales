@@ -1,0 +1,278 @@
+CLASS lhc_zrce_sd_auto_clos_sales DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR zrce_sd_auto_clos_sales RESULT result.
+
+    METHODS create FOR MODIFY
+      IMPORTING entities FOR CREATE zrce_sd_auto_clos_sales.
+
+    METHODS update FOR MODIFY
+      IMPORTING entities FOR UPDATE zrce_sd_auto_clos_sales.
+
+    METHODS delete FOR MODIFY
+      IMPORTING keys FOR DELETE zrce_sd_auto_clos_sales.
+
+    METHODS read FOR READ
+      IMPORTING keys FOR READ zrce_sd_auto_clos_sales RESULT result.
+
+    METHODS lock FOR LOCK
+      IMPORTING keys FOR LOCK zrce_sd_auto_clos_sales.
+
+    METHODS ScheduleJob FOR MODIFY
+      IMPORTING keys FOR ACTION zrce_sd_auto_clos_sales~ScheduleJob RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_zrce_sd_auto_clos_sales IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD create.
+
+    " Types Declaration
+    TYPES: BEGIN OF lty_vbep,
+             etenr     TYPE etenr,      "Schedule Line Number
+             wmeng     TYPE wmeng,      "Order Quantity
+             dlvqty_bu TYPE dlvqty,     "Delivered Quantity
+           END OF lty_vbep.
+
+    TYPES: BEGIN OF lty_vbap,
+             vbeln  TYPE vbeln_va,
+             posnr  TYPE posnr_va,
+             matnr  TYPE matnr,
+             werks  TYPE werks_ext,
+             kbmeng TYPE kbmeng,
+             lfsta  TYPE lfsta,
+           END OF lty_vbap.
+
+    " Constant Declaration
+    CONSTANTS: lc_dot  TYPE char1 VALUE '.',
+               lc_u    TYPE char1 VALUE 'U',
+               lc_i    TYPE char1 VALUE 'I',
+               lc_x    TYPE char1 VALUE 'X',
+               lc_z5   TYPE char2 VALUE 'Z5',
+               lc_a    TYPE char1 VALUE 'A',
+               lc_b    TYPE char1 VALUE 'B',
+               lc_0001 TYPE etenr VALUE '0001'.
+
+    " Data Declaration
+    DATA: lt_vbep             TYPE TABLE OF lty_vbep,
+          ls_order_header_inx TYPE bapisdh1x,
+          lt_return           TYPE TABLE OF bapiret2,
+          ls_order_item_in    TYPE bapisditm,
+          lt_order_item_in    TYPE TABLE OF bapisditm,
+          ls_order_item_inx   TYPE  bapisditmx,
+          lt_order_item_inx   TYPE TABLE OF bapisditmx,
+          ls_schedule_lines   TYPE bapischdl,
+          lt_schedule_lines   TYPE TABLE OF bapischdl,
+          ls_schedule_linesx  TYPE bapischdlx,
+          lt_schedule_linesx  TYPE TABLE OF bapischdlx,
+          lv_calc_date        TYPE sy-datum,
+          lv_ord_qty          TYPE wmeng,
+          lv_del_qty          TYPE dlvqty,
+          lv_open_qty         TYPE dzmeng,
+          lv_remain_qty       TYPE dzmeng,
+          lfl_error           TYPE char1 VALUE abap_false,
+          ls_vbap             TYPE lty_vbap,
+          lt_vbap             TYPE TABLE OF lty_vbap,
+          ls_msg              TYPE  c LENGTH 250.
+
+    LOOP AT entities ASSIGNING FIELD-SYMBOL(<fs_entities>).
+
+      CLEAR ls_vbap.
+      ls_vbap-vbeln = <fs_entities>-vbeln.
+      ls_vbap-posnr = <fs_entities>-posnr.
+      ls_vbap-matnr = <fs_entities>-matnr.
+      ls_vbap-werks = <fs_entities>-werks.
+      ls_vbap-kbmeng = <fs_entities>-kbmeng.
+      ls_vbap-lfsta = <fs_entities>-lfsta.
+      APPEND ls_vbap TO lt_vbap.
+
+    ENDLOOP.
+
+*    DATA(lo_auto_clos_sale) =  NEW zcl_sd_auto_clos_sales_exe(  ).
+*    lo_auto_clos_sale->main_auto_clos( EXPORTING it_vbap = lt_vbap IMPORTING it_message = DATA(lt_message) ).
+
+*    IF lt_message IS NOT INITIAL.
+*      LOOP AT lt_message ASSIGNING FIELD-SYMBOL(<fs_msg>).
+*        APPEND VALUE #( %msg = new_message(
+*                              id = 'SALESCLOS'
+*                              number   = 000
+*                              severity = ms-error
+*                              v1 = <fs_msg>+0(50)
+*                              v2 = <fs_msg>+50(50)
+*                              v3 = <fs_msg>+100(50)
+*                              v4 = <fs_msg>+150(50)
+*                         ) )
+*           TO reported-zre_sd_auto_clos_sales.
+*      ENDLOOP.
+*    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD update.
+  ENDMETHOD.
+
+  METHOD delete.
+  ENDMETHOD.
+
+  METHOD read.
+  ENDMETHOD.
+
+  METHOD lock.
+  ENDMETHOD.
+
+  METHOD ScheduleJob.
+
+    DATA: ls_job_parameter TYPE cl_apj_rt_api=>ty_job_parameter_value,
+          lt_job_parameter TYPE cl_apj_rt_api=>tt_job_parameter_value,
+          ls_value_range   TYPE cl_apj_rt_api=>ty_value_range,
+          lt_value_range   TYPE cl_apj_rt_api=>tt_value_range.
+
+    DATA:
+      lv_job_template_name TYPE cl_apj_rt_api=>ty_template_name  VALUE 'ZSD_AUTO_CLOS_SALES_TEMP',
+      ls_job_start_info    TYPE cl_apj_rt_api=>ty_start_info,
+      lv_job_name          TYPE cl_apj_rt_api=>ty_jobname,
+      lv_job_count         TYPE cl_apj_rt_api=>ty_jobcount.
+
+    CLEAR lt_job_parameter.
+
+    LOOP AT keys INTO DATA(ls_key).
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_vkorg'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-vkorg.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_vtweg'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-vtweg.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_kunnr'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-kunnr.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_kvgr1'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-kvgr1.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_matnr'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-matnr.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_werks'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-werks.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_auart'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-auart.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 's_date'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-vdatu.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+      CLEAR:ls_value_range,ls_job_parameter.
+      ls_job_parameter-name = 'p_days'.
+      ls_value_range-sign = 'I'.
+      ls_value_range-option = 'EQ'.
+      ls_value_range-low =  ls_key-%param-ndays.
+      APPEND ls_value_range TO ls_job_parameter-t_value.
+      APPEND ls_job_parameter TO lt_job_parameter.
+
+    ENDLOOP.
+
+    TRY.
+        ls_job_start_info-start_immediately = abap_true.
+        " schedule job
+        cl_apj_rt_api=>schedule_job(
+          EXPORTING
+            iv_job_template_name   = lv_job_template_name
+            iv_job_text            = 'Automatic Closure Of Sales'
+            is_start_info          = ls_job_start_info
+            it_job_parameter_value =  lt_job_parameter"
+          IMPORTING
+            ev_jobname             = lv_job_name
+            ev_jobcount            = lv_job_count ).
+
+        " success message
+        IF sy-subrc = 0.
+        ENDIF.
+
+      CATCH cx_apj_rt INTO DATA(lx_job_scheduling_error).
+        CLEAR: result.
+
+      CATCH cx_root INTO DATA(lx_root_exception).
+        CLEAR result.
+    ENDTRY.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+CLASS lsc_ZRCE_SD_AUTO_CLOS_SALES DEFINITION INHERITING FROM cl_abap_behavior_saver.
+  PROTECTED SECTION.
+
+    METHODS finalize REDEFINITION.
+
+    METHODS check_before_save REDEFINITION.
+
+    METHODS save REDEFINITION.
+
+    METHODS cleanup REDEFINITION.
+
+    METHODS cleanup_finalize REDEFINITION.
+
+ENDCLASS.
+
+CLASS lsc_ZRCE_SD_AUTO_CLOS_SALES IMPLEMENTATION.
+
+  METHOD finalize.
+  ENDMETHOD.
+
+  METHOD check_before_save.
+  ENDMETHOD.
+
+  METHOD save.
+  ENDMETHOD.
+
+  METHOD cleanup.
+  ENDMETHOD.
+
+  METHOD cleanup_finalize.
+  ENDMETHOD.
+
+ENDCLASS.
