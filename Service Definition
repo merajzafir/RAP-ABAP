@@ -1,0 +1,15 @@
+unmanaged implementation in class zbp_rce_sd_auto_clos_sales unique;
+//strict; //Comment this line in to enable strict mode. The strict mode is prerequisite to be future proof regarding syntax and to be able to release your BO.
+
+define behavior for zrce_sd_auto_clos_sales //alias <alias_name>
+//late numbering
+lock master
+authorization master ( instance )
+//etag master <field_name>
+{
+  create;
+  update;
+  delete;
+
+  action (lock:none) ScheduleJob parameter ZARE_SD_AUTO_CLOS_SALE_SCHD_JB result [1] $self;
+}
